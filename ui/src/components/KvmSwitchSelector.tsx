@@ -69,7 +69,7 @@ export const KvmSwitchSelector: React.FC = () => {
   }, [config]);
 
   const handleSelectPort = async (port: number) => {
-    if (port === activePort || isSwitching) return;
+    if (isSwitching) return;
     setIsSwitching(true);
     try {
       const res = await fetch('/api/kvm-switch/select', {

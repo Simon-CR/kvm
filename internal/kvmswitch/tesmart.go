@@ -121,17 +121,17 @@ func (s *TESmartSwitch) SwitchPort(port int) error {
 		return fmt.Errorf("switch is disabled")
 	}
 
-	if s.activePort == port {
-		return nil
-	}
-
 	cmd := []byte{cmdHeader[0], cmdHeader[1], cmdHeader[2], cmdSwitch, byte(port), cmdFooter}
-	_, err := s.executeCommand(cmd, false)
+	resp, err := s.executeCommand(cmd, true)
 	if err != nil {
 		return err
 	}
 	
-	s.activePort = port
+	if len(resp) >= 6 && resp[0] == 0xAA && resp[1] == 0xBB {
+		s.activePort = int(resp[4]) + 1
+	} else {
+		s.activePort = port
+	}
 	return nil
 }
 
@@ -151,7 +151,7 @@ func (s *TESmartSwitch) QueryActivePort() (int, error) {
 	}
 
 	if len(resp) >= 6 && resp[0] == 0xAA && resp[1] == 0xBB {
-		port := int(resp[4])
+		port := int(resp[4]) + 1
 		s.activePort = port
 		return port, nil
 	}
@@ -195,7 +195,7 @@ func TestConnection(ip string, port int) (int, time.Duration, error) {
 	latency := time.Since(start)
 
 	if len(resp) >= 6 && resp[0] == 0xAA && resp[1] == 0xBB {
-		activePort := int(resp[4])
+		activePort := int(resp[4]) + 1
 		return activePort, latency, nil
 	}
 	return -1, 0, fmt.Errorf("invalid response length or header: %x", resp)
