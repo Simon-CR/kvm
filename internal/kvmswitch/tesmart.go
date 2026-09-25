@@ -218,48 +218,72 @@ func (s *TESmartSwitch) executeASCIICommand(cmd string, expectResponse bool) (st
 	return string(resp[:n]), nil
 }
 
-func (s *TESmartSwitch) QueryNetworkInfo() (string, string, error) {
+func (s *TESmartSwitch) QueryNetworkInfo() (string, string, string, int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	if !s.enabled {
-		return "", "", fmt.Errorf("switch is disabled")
+		return "", "", "", 0, fmt.Errorf("switch is disabled")
 	}
 
 	ipResp, err := s.executeASCIICommand("IP?\r\n", true)
 	if err != nil {
-		return "", "", err
+		return "", "", "", 0, err
+	}
+
+	maResp, err := s.executeASCIICommand("MA?\r\n", true)
+	if err != nil {
+		return "", "", "", 0, err
 	}
 
 	gwResp, err := s.executeASCIICommand("GW?\r\n", true)
 	if err != nil {
-		return "", "", err
+		return "", "", "", 0, err
 	}
 	
-	// Parse Responses like "IP:192.168.001.010;"
-	var ip, gw string
-	if len(ipResp) > 3 && ipResp[:3] == "IP:" {
-		ip = ipResp[3:]
-		if ip[len(ip)-1] == ';' {
-			ip = ip[:len(ip)-1]
-		}
-	} else {
-		return "", "", fmt.Errorf("invalid IP response: %s", ipResp)
+	ptResp, err := s.executeASCIICommand("PT?\r\n", true)
+	if err != nil {
+		return "", "", "", 0, err
 	}
 
-	if len(gwResp) > 3 && gwResp[:3] == "GW:" {
-		gw = gwResp[3:]
-		if gw[len(gw)-1] == ';' {
-			gw = gw[:len(gw)-1]
+	parseValue := func(resp, prefix string) (string, error) {
+		if len(resp) > 3 && resp[:3] == prefix {
+			val := resp[3:]
+			if len(val) > 0 && val[len(val)-1] == ';' {
+				val = val[:len(val)-1]
+			}
+			return val, nil
 		}
-	} else {
-		return "", "", fmt.Errorf("invalid GW response: %s", gwResp)
+		return "", fmt.Errorf("invalid %s response: %s", prefix, resp)
 	}
 
-	return ip, gw, nil
+	ip, err := parseValue(ipResp, "IP:")
+	if err != nil {
+		return "", "", "", 0, err
+	}
+	mask, err := parseValue(maResp, "MA:")
+	if err != nil {
+		return "", "", "", 0, err
+	}
+	gw, err := parseValue(gwResp, "GW:")
+	if err != nil {
+		return "", "", "", 0, err
+	}
+	ptStr, err := parseValue(ptResp, "PT:")
+	if err != nil {
+		return "", "", "", 0, err
+	}
+	
+	var pt int
+	_, err = fmt.Sscanf(ptStr, "%d", &pt)
+	if err != nil {
+		return "", "", "", 0, fmt.Errorf("invalid port value: %s", ptStr)
+	}
+
+	return ip, mask, gw, pt, nil
 }
 
-func (s *TESmartSwitch) ConfigureNetwork(newIP, newGateway string) error {
+func (s *TESmartSwitch) ConfigureNetwork(newIP, newMask, newGateway string, newPort int) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -272,11 +296,21 @@ func (s *TESmartSwitch) ConfigureNetwork(newIP, newGateway string) error {
 		return fmt.Errorf("failed to set IP: %w", err)
 	}
 
+	_, err = s.executeASCIICommand(fmt.Sprintf("MA:%s;\r\n", newMask), false)
+	if err != nil {
+		return fmt.Errorf("failed to set MA: %w", err)
+	}
+
 	_, err = s.executeASCIICommand(fmt.Sprintf("GW:%s;\r\n", newGateway), false)
 	if err != nil {
 		return fmt.Errorf("failed to set GW: %w", err)
 	}
 
+	// Port needs to be formatted with leading zeros to 5 digits, but "%05d" handles it.
+	_, err = s.executeASCIICommand(fmt.Sprintf("PT:%05d;\r\n", newPort), false)
+	if err != nil {
+		return fmt.Errorf("failed to set PT: %w", err)
+	}
+
 	return nil
 }
-

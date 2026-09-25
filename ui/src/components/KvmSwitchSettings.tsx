@@ -66,7 +66,9 @@ export const KvmSwitchSettings: React.FC = () => {
   };
 
   const [networkIP, setNetworkIP] = useState('');
+  const [networkMask, setNetworkMask] = useState('');
   const [networkGateway, setNetworkGateway] = useState('');
+  const [networkPort, setNetworkPort] = useState(5000);
   const [fetchingNetwork, setFetchingNetwork] = useState(false);
   const [applyingNetwork, setApplyingNetwork] = useState(false);
 
@@ -77,7 +79,9 @@ export const KvmSwitchSettings: React.FC = () => {
       const data = await res.json();
       if (res.ok) {
         setNetworkIP(data.ip || '');
+        setNetworkMask(data.mask || '');
         setNetworkGateway(data.gateway || '');
+        setNetworkPort(data.port || 5000);
       } else {
         alert("Failed to get network config: " + (data.error || ""));
       }
@@ -95,7 +99,7 @@ export const KvmSwitchSettings: React.FC = () => {
       const res = await fetch('/api/kvm-switch/network', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ip: networkIP, gateway: networkGateway })
+        body: JSON.stringify({ ip: networkIP, mask: networkMask, gateway: networkGateway, port: networkPort })
       });
       if (res.ok) {
         alert("Network settings applied.");
@@ -202,10 +206,27 @@ export const KvmSwitchSettings: React.FC = () => {
             />
           </div>
           <div style={{ flex: 1 }}>
+            <label>Subnet Mask</label>
+            <Input 
+              value={networkMask}
+              onChange={(e) => setNetworkMask(e.target.value)}
+            />
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '16px' }}>
+          <div style={{ flex: 1 }}>
             <label>Switch Gateway</label>
             <Input 
               value={networkGateway}
               onChange={(e) => setNetworkGateway(e.target.value)}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label>Port</label>
+            <Input 
+              type="number"
+              value={networkPort}
+              onChange={(e) => setNetworkPort(parseInt(e.target.value, 10) || 5000)}
             />
           </div>
         </div>
