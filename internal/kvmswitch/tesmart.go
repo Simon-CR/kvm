@@ -21,6 +21,7 @@ type TESmartSwitch struct {
 	pollInterval time.Duration
 	cancelPoller context.CancelFunc
 	enabled      bool
+	lastCmdTime  time.Time
 }
 
 var (
@@ -79,6 +80,12 @@ func (s *TESmartSwitch) pollLoop(ctx context.Context) {
 }
 
 func (s *TESmartSwitch) executeCommand(cmd []byte, expectResponse bool) ([]byte, error) {
+	elapsed := time.Since(s.lastCmdTime)
+	if elapsed < 500*time.Millisecond {
+		time.Sleep((500 * time.Millisecond) - elapsed)
+	}
+	s.lastCmdTime = time.Now()
+
 	address := fmt.Sprintf("%s:%d", s.ip, s.port)
 	conn, err := net.DialTimeout("tcp", address, 2*time.Second)
 	if err != nil {
@@ -112,6 +119,10 @@ func (s *TESmartSwitch) SwitchPort(port int) error {
 
 	if !s.enabled {
 		return fmt.Errorf("switch is disabled")
+	}
+
+	if s.activePort == port {
+		return nil
 	}
 
 	cmd := []byte{cmdHeader[0], cmdHeader[1], cmdHeader[2], cmdSwitch, byte(port), cmdFooter}
@@ -191,6 +202,12 @@ func TestConnection(ip string, port int) (int, time.Duration, error) {
 }
 
 func (s *TESmartSwitch) executeASCIICommand(cmd string, expectResponse bool) (string, error) {
+	elapsed := time.Since(s.lastCmdTime)
+	if elapsed < 500*time.Millisecond {
+		time.Sleep((500 * time.Millisecond) - elapsed)
+	}
+	s.lastCmdTime = time.Now()
+
 	address := fmt.Sprintf("%s:%d", s.ip, s.port)
 	conn, err := net.DialTimeout("tcp", address, 2*time.Second)
 	if err != nil {

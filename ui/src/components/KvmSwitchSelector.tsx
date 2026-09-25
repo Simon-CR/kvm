@@ -16,6 +16,8 @@ export const KvmSwitchSelector: React.FC = () => {
   const [config, setConfig] = useState<KvmSwitchConfig | null>(null);
   const [activePort, setActivePort] = useState<number>(-1);
 
+  const [isSwitching, setIsSwitching] = useState(false);
+
   useEffect(() => {
     const fetchConfig = async () => {
       try {
@@ -67,6 +69,8 @@ export const KvmSwitchSelector: React.FC = () => {
   }, [config]);
 
   const handleSelectPort = async (port: number) => {
+    if (port === activePort || isSwitching) return;
+    setIsSwitching(true);
     try {
       const res = await fetch('/api/kvm-switch/select', {
         method: 'POST',
@@ -78,6 +82,8 @@ export const KvmSwitchSelector: React.FC = () => {
       }
     } catch (e) {
       console.error('Failed to select port', e);
+    } finally {
+      setIsSwitching(false);
     }
   };
 
@@ -109,6 +115,7 @@ export const KvmSwitchSelector: React.FC = () => {
     >
       <Select
         placeholder="Select KVM Port"
+        disabled={isSwitching}
         getPopupContainer={(triggerNode) => triggerNode.parentElement || document.body}
         dropdownStyle={{ zIndex: 9999 }}
         onDropdownVisibleChange={(open) => {
