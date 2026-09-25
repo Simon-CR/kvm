@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Select } from 'antd';
+import { useUiStore } from '@/hooks/stores';
 
 export interface KvmSwitchConfig {
   enabled: boolean;
@@ -80,6 +81,8 @@ export const KvmSwitchSelector: React.FC = () => {
     }
   };
 
+  const setDisableFocusTrap = useUiStore(state => state.setDisableVideoFocusTrap);
+
   if (!config?.enabled) {
     return null;
   }
@@ -92,12 +95,30 @@ export const KvmSwitchSelector: React.FC = () => {
   }));
 
   return (
-    <div style={{ padding: '8px', zIndex: 100 }}>
+    <div 
+      className="inline-flex items-center px-1"
+      style={{ zIndex: 100 }}
+      onMouseDown={(e) => {
+        e.stopPropagation();
+        setDisableFocusTrap(true);
+      }}
+      onClick={(e) => {
+        e.stopPropagation();
+        setDisableFocusTrap(true);
+      }}
+    >
       <Select
         placeholder="Select KVM Port"
+        getPopupContainer={(triggerNode) => triggerNode.parentElement || document.body}
+        dropdownStyle={{ zIndex: 9999 }}
+        onDropdownVisibleChange={(open) => {
+          if (open) {
+            setDisableFocusTrap(true);
+          }
+        }}
         value={activePort > 0 ? activePort : undefined}
         onChange={(val: number) => handleSelectPort(val)}
-        style={{ width: '150px' }}
+        style={{ width: '160px' }}
         options={options}
       />
     </div>

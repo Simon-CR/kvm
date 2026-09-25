@@ -181,6 +181,8 @@ func setupRouter() *gin.Engine {
 		protected.GET("/api/kvm-switch/status", handleGetKvmSwitchStatus)
 		protected.POST("/api/kvm-switch/select", handleSetKvmSwitchSelect)
 		protected.POST("/api/kvm-switch/test", handleTestKvmSwitchConnection)
+		protected.GET("/api/kvm-switch/network", handleGetKvmSwitchNetwork)
+		protected.POST("/api/kvm-switch/network", handleSetKvmSwitchNetwork)
 	}
 
 	// Catch-all route for SPA

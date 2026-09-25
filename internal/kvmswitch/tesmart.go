@@ -3,6 +3,7 @@ package kvmswitch
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"sync"
 	"time"
@@ -96,13 +97,13 @@ func (s *TESmartSwitch) executeCommand(cmd []byte, expectResponse bool) ([]byte,
 		return nil, nil
 	}
 
-	resp := make([]byte, 256)
-	n, err := conn.Read(resp)
+	resp := make([]byte, 6)
+	_, err = io.ReadFull(conn, resp)
 	if err != nil {
 		return nil, fmt.Errorf("read error: %w", err)
 	}
 
-	return resp[:n], nil
+	return resp, nil
 }
 
 func (s *TESmartSwitch) SwitchPort(port int) error {
@@ -174,18 +175,108 @@ func TestConnection(ip string, port int) (int, time.Duration, error) {
 		return -1, 0, fmt.Errorf("write error: %w", err)
 	}
 
-	resp := make([]byte, 256)
-	n, err := conn.Read(resp)
+	resp := make([]byte, 6)
+	_, err = io.ReadFull(conn, resp)
 	if err != nil {
 		return -1, 0, fmt.Errorf("read error: %w", err)
 	}
 
 	latency := time.Since(start)
 
-	if n >= 6 && resp[0] == 0xAA && resp[1] == 0xBB {
+	if len(resp) >= 6 && resp[0] == 0xAA && resp[1] == 0xBB {
 		activePort := int(resp[4])
 		return activePort, latency, nil
 	}
-	return -1, 0, fmt.Errorf("invalid response length or header: %x", resp[:n])
+	return -1, 0, fmt.Errorf("invalid response length or header: %x", resp)
+}
+
+func (s *TESmartSwitch) executeASCIICommand(cmd string, expectResponse bool) (string, error) {
+	address := fmt.Sprintf("%s:%d", s.ip, s.port)
+	conn, err := net.DialTimeout("tcp", address, 2*time.Second)
+	if err != nil {
+		return "", fmt.Errorf("connect error: %w", err)
+	}
+	defer conn.Close()
+
+	conn.SetDeadline(time.Now().Add(2 * time.Second))
+
+	_, err = conn.Write([]byte(cmd))
+	if err != nil {
+		return "", fmt.Errorf("write error: %w", err)
+	}
+
+	if !expectResponse {
+		return "", nil
+	}
+
+	resp := make([]byte, 256)
+	n, err := conn.Read(resp)
+	if err != nil {
+		return "", fmt.Errorf("read error: %w", err)
+	}
+
+	return string(resp[:n]), nil
+}
+
+func (s *TESmartSwitch) QueryNetworkInfo() (string, string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if !s.enabled {
+		return "", "", fmt.Errorf("switch is disabled")
+	}
+
+	ipResp, err := s.executeASCIICommand("IP?\r\n", true)
+	if err != nil {
+		return "", "", err
+	}
+
+	gwResp, err := s.executeASCIICommand("GW?\r\n", true)
+	if err != nil {
+		return "", "", err
+	}
+	
+	// Parse Responses like "IP:192.168.001.010;"
+	var ip, gw string
+	if len(ipResp) > 3 && ipResp[:3] == "IP:" {
+		ip = ipResp[3:]
+		if ip[len(ip)-1] == ';' {
+			ip = ip[:len(ip)-1]
+		}
+	} else {
+		return "", "", fmt.Errorf("invalid IP response: %s", ipResp)
+	}
+
+	if len(gwResp) > 3 && gwResp[:3] == "GW:" {
+		gw = gwResp[3:]
+		if gw[len(gw)-1] == ';' {
+			gw = gw[:len(gw)-1]
+		}
+	} else {
+		return "", "", fmt.Errorf("invalid GW response: %s", gwResp)
+	}
+
+	return ip, gw, nil
+}
+
+func (s *TESmartSwitch) ConfigureNetwork(newIP, newGateway string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if !s.enabled {
+		return fmt.Errorf("switch is disabled")
+	}
+
+	_, err := s.executeASCIICommand(fmt.Sprintf("IP:%s;\r\n", newIP), false)
+	if err != nil {
+		return fmt.Errorf("failed to set IP: %w", err)
+	}
+
+	_, err = s.executeASCIICommand(fmt.Sprintf("GW:%s;\r\n", newGateway), false)
+	if err != nil {
+		return fmt.Errorf("failed to set GW: %w", err)
+	}
+
+	return nil
 }
 

@@ -97,3 +97,40 @@ func handleTestKvmSwitchConnection(c *gin.Context) {
 	})
 }
 
+func handleGetKvmSwitchNetwork(c *gin.Context) {
+	if kvmswitch.GlobalSwitch == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "switch not initialized"})
+		return
+	}
+	ip, gw, err := kvmswitch.GlobalSwitch.QueryNetworkInfo()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ip": ip, "gateway": gw})
+}
+
+func handleSetKvmSwitchNetwork(c *gin.Context) {
+	var req struct {
+		IP      string `json:"ip"`
+		Gateway string `json:"gateway"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if kvmswitch.GlobalSwitch == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "switch not initialized"})
+		return
+	}
+
+	err := kvmswitch.GlobalSwitch.ConfigureNetwork(req.IP, req.Gateway)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+

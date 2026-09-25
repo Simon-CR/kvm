@@ -65,7 +65,53 @@ export const KvmSwitchSettings: React.FC = () => {
     }));
   };
 
+  const [networkIP, setNetworkIP] = useState('');
+  const [networkGateway, setNetworkGateway] = useState('');
+  const [fetchingNetwork, setFetchingNetwork] = useState(false);
+  const [applyingNetwork, setApplyingNetwork] = useState(false);
+
+  const fetchNetwork = async () => {
+    setFetchingNetwork(true);
+    try {
+      const res = await fetch('/api/kvm-switch/network');
+      const data = await res.json();
+      if (res.ok) {
+        setNetworkIP(data.ip || '');
+        setNetworkGateway(data.gateway || '');
+      } else {
+        alert("Failed to get network config: " + (data.error || ""));
+      }
+    } catch (e) {
+      alert("Failed to fetch network config.");
+    } finally {
+      setFetchingNetwork(false);
+    }
+  };
+
+  const applyNetwork = async () => {
+    if (!window.confirm("Warning: Applying network settings requires a hard reboot of the switch. Proceed?")) return;
+    setApplyingNetwork(true);
+    try {
+      const res = await fetch('/api/kvm-switch/network', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ip: networkIP, gateway: networkGateway })
+      });
+      if (res.ok) {
+        alert("Network settings applied.");
+      } else {
+        const data = await res.json();
+        alert("Failed to apply network settings: " + (data.error || ""));
+      }
+    } catch (e) {
+      alert("Failed to apply network settings.");
+    } finally {
+      setApplyingNetwork(false);
+    }
+  };
+
   return (
+    <>
     <Card title="TESmart KVM Switch Configuration" style={{ margin: '16px' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div>
@@ -144,5 +190,35 @@ export const KvmSwitchSettings: React.FC = () => {
         </Button>
       </div>
     </Card>
+    
+    <Card title="TESmart Switch Network Configuration" style={{ margin: '16px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', gap: '16px' }}>
+          <div style={{ flex: 1 }}>
+            <label>Switch IP</label>
+            <Input 
+              value={networkIP}
+              onChange={(e) => setNetworkIP(e.target.value)}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label>Switch Gateway</label>
+            <Input 
+              value={networkGateway}
+              onChange={(e) => setNetworkGateway(e.target.value)}
+            />
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Button onClick={fetchNetwork} loading={fetchingNetwork}>
+            Refresh
+          </Button>
+          <Button type="primary" danger onClick={applyNetwork} loading={applyingNetwork}>
+            Apply Network Settings
+          </Button>
+        </div>
+      </div>
+    </Card>
+    </>
   );
 };
