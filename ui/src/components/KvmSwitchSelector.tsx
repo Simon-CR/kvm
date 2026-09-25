@@ -18,19 +18,22 @@ export const KvmSwitchSelector: React.FC = () => {
 
   const [isSwitching, setIsSwitching] = useState(false);
 
-  useEffect(() => {
-    const fetchConfig = async () => {
-      try {
-        const res = await fetch('/api/kvm-switch/config');
-        if (res.ok) {
-          const data = await res.json();
-          setConfig(data);
-        }
-      } catch (e) {
-        console.error('Failed to fetch KVM switch config', e);
+  const fetchConfig = async () => {
+    try {
+      const res = await fetch('/api/kvm-switch/config');
+      if (res.ok) {
+        const data = await res.json();
+        setConfig(data);
       }
-    };
+    } catch (e) {
+      console.error('Failed to fetch KVM switch config', e);
+    }
+  };
+
+  useEffect(() => {
     fetchConfig();
+    window.addEventListener('kvm-config-changed', fetchConfig);
+    return () => window.removeEventListener('kvm-config-changed', fetchConfig);
   }, []);
 
   useEffect(() => {
@@ -121,6 +124,7 @@ export const KvmSwitchSelector: React.FC = () => {
         onDropdownVisibleChange={(open) => {
           if (open) {
             setDisableFocusTrap(true);
+            fetchConfig();
           }
         }}
         value={activePort > 0 ? activePort : undefined}

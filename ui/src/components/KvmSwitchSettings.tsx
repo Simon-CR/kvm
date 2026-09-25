@@ -32,6 +32,7 @@ export const KvmSwitchSettings: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config)
       });
+      window.dispatchEvent(new CustomEvent('kvm-config-changed'));
       alert("Settings saved successfully.");
     } catch (e) {
       alert("Failed to save settings.");
