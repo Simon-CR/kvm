@@ -27,7 +27,7 @@ fi
 # Download enhanced binary
 TMP_BIN="/tmp/kvm_app_tesmart"
 echo "Downloading binary..."
-curl -sSL -o "$TMP_BIN" "https://github.com/Simon-CR/picokvm-tesmart/releases/download/v0.1.4-tesmart/kvm_app"
+curl -sSL -o "$TMP_BIN" "https://github.com/Simon-CR/kvm/releases/download/v0.1.4-tesmart/kvm_app"
 
 chmod +x "$TMP_BIN"
 
