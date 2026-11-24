@@ -19,6 +19,8 @@ import { cx } from "@/cva.config";
 import { useJsonRpc } from "@/hooks/useJsonRpc";
 import LogoLuckfox from "@assets/logo-luckfox.png";
 import MacroTopBar from "@/layout/components_side/Macros/MacroTopBar";
+import { BarsPinButton } from "@/layout/core/bar_autohide";
+import { KvmSwitchSelector } from "@/components/KvmSwitchSelector";
 import { dark_bg2_style } from "@/layout/theme_color";
 import { useTheme } from "@/layout/contexts/ThemeContext";
 
@@ -87,7 +89,7 @@ export default function TopBarPC({
                 transition
                 className={cx(
                   "z-10 flex origin-top flex-col overflow-visible!",
-                  "flex origin-top flex-col transition duration-300 ease-out data-closed:-translate-y-8 data-closed:opacity-0", // 修改了 translate 的值
+                  "flex origin-top flex-col transition duration-300 ease-out data-closed:-translate-y-8 data-closed:opacity-0", // translate value adjusted
                   "w-[800px]",
                 )}
               >
@@ -121,6 +123,8 @@ export default function TopBarPC({
             >
               {$at("Power")}
             </AntdButton>
+            
+            <KvmSwitchSelector />
 
             <AntdButton
               type={"text"}
@@ -138,7 +142,6 @@ export default function TopBarPC({
             >
               {$at("Terminal")}
             </AntdButton>
-
 
             <div className="hidden lg:block">
 
@@ -173,6 +176,7 @@ export default function TopBarPC({
           </div>
           <div className="flex flex-wrap items-center gap-x-1 gap-y-2">
             <MacroTopBar />
+            <BarsPinButton />
           </div>
 
         </div>
