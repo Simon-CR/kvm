@@ -2,12 +2,15 @@ package kvm
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"kvm/internal/kvmswitch"
 )
 
 var currentScreen = "ui_Boot_Screen"
@@ -140,6 +143,24 @@ func updateDisplay() {
 	pushMainNetworkState()
 	pushNetworkDetail()
 	pushUsbDetail()
+
+	updateKvmSwitchDisplay()
+}
+
+func updateKvmSwitchDisplay() {
+	if config.KvmSwitch != nil && config.KvmSwitch.Enabled && kvmswitch.GlobalSwitch != nil {
+		activePort := kvmswitch.GlobalSwitch.GetActivePort()
+		if activePort > 0 {
+			name := fmt.Sprintf("Port %d", activePort)
+			if config.KvmSwitch.PortNames != nil {
+				if n, ok := config.KvmSwitch.PortNames[activePort]; ok && n != "" {
+					name = n
+				}
+			}
+			text := fmt.Sprintf("KVM: [P%d] %s", activePort, name)
+			updateLabelIfChanged("Main_Date_Label", text)
+		}
+	}
 }
 
 var (
@@ -353,6 +374,7 @@ func watchTsEvents() {
 		}
 
 		wakeDisplay(false)
+
 	}
 }
 

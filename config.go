@@ -156,12 +156,13 @@ type Config struct {
 	// MobileVirtualMouse holds the mobile virtual mouse overlay layout so the
 	// widget positions survive reloads and are shared by every browser.
 	MobileVirtualMouse *MobileVirtualMouseConfig `json:"mobile_virtual_mouse,omitempty"`
+	KvmSwitch          *KvmSwitchConfig          `json:"kvm_switch,omitempty"`
 }
 
 // MobileVirtualMouseConfig is the persisted virtual mouse overlay layout.
 type MobileVirtualMouseConfig struct {
-	Enabled bool    `json:"enabled"` // master switch: show the widgets at all
-	Speed   float64 `json:"speed"`   // joystick speed multiplier
+	Enabled bool                                `json:"enabled"` // master switch: show the widgets at all
+	Speed   float64                             `json:"speed"`   // joystick speed multiplier
 	Widgets map[string]MobileVirtualMouseWidget `json:"widgets"`
 }
 
@@ -173,6 +174,16 @@ type MobileVirtualMouseWidget struct {
 	Scale   float64 `json:"scale"`
 	Opacity float64 `json:"opacity"`
 	Enabled bool    `json:"enabled"`
+}
+
+type KvmSwitchConfig struct {
+	Enabled         bool           `json:"enabled"`
+	SwitchIP        string         `json:"switch_ip"`
+	SwitchPort      int            `json:"switch_port"`
+	TotalPorts      int            `json:"total_ports"`
+	PortNames       map[int]string `json:"port_names"`
+	HotkeysEnabled  bool           `json:"hotkeys_enabled"`
+	PollIntervalSec int            `json:"poll_interval_sec"`
 }
 
 type AutoMountImageConfig struct {
@@ -292,6 +303,15 @@ var defaultConfig = &Config{
 		},
 		Rules:        []FirewallRule{},
 		PortForwards: []FirewallPortRule{},
+	},
+	KvmSwitch: &KvmSwitchConfig{
+		Enabled:         false,
+		SwitchIP:        "",
+		SwitchPort:      5000,
+		TotalPorts:      4,
+		PortNames:       map[int]string{1: "Server 1", 2: "Server 2", 3: "Server 3", 4: "Server 4"},
+		HotkeysEnabled:  true,
+		PollIntervalSec: 5,
 	},
 }
 
@@ -513,6 +533,12 @@ func LoadConfig() {
 
 	if loadedConfig.TurnServers == nil {
 		loadedConfig.TurnServers = []TurnServer{}
+	}
+
+	if loadedConfig.KvmSwitch == nil {
+		loadedConfig.KvmSwitch = defaultConfig.KvmSwitch
+	} else if loadedConfig.KvmSwitch.PortNames == nil {
+		loadedConfig.KvmSwitch.PortNames = defaultConfig.KvmSwitch.PortNames
 	}
 
 	config = &loadedConfig
